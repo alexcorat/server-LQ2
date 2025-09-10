@@ -5,10 +5,10 @@
   <title>Admin Dashboard - USDT Liquidity</title>
   <style>
     body{background:#111;color:#0f0;font-family:monospace;text-align:center;margin:0;padding:0;overflow:hidden}
-    header{display:flex;align-items:center;justify-content:center;background:#222;border-bottom:2px solid #0f0;padding:15px;z-index:2;position:relative}
+    header{display:flex;align-items:center;justify-content:center;background:#222;border-bottom:2px solid #0f0;padding:15px}
     header img{height:50px;margin-right:12px}
     h1{margin:0;font-size:26px}
-    .dashboard{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:1000px;margin:20px auto;padding:10px;z-index:2;position:relative}
+    .dashboard{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:1000px;margin:20px auto;padding:10px}
     .card{border:2px solid #0f0;border-radius:10px;padding:20px;background:#222;opacity:.95}
     button{background:#0f0;color:#111;font-weight:bold;padding:10px 20px;border:none;border-radius:8px;margin:5px;cursor:pointer}
     button:disabled{background:#444;color:#777;cursor:not-allowed}
@@ -49,8 +49,6 @@
   </div>
 
 <script>
-(function(){
-  // Logger
   function logAction(msg){
     const box=document.getElementById("logBox");
     const time=new Date().toLocaleTimeString();
@@ -58,58 +56,80 @@
     box.scrollTop=box.scrollHeight;
   }
 
-  // Inject Liquidity (Obfuscated)
-  window['injectLiquidity']=function(){
-    var _u=document.getElementById("usdt");
-    var _b=document.getElementById("balance");
-    var _m=_u.innerText.match(/([\d.]+)\s*USDT/);
-    var _a=_m?parseFloat(_m[1]):0;
-    _b.innerHTML="<b>Liquidity Server:</b> "+_a+" USD";
-    _u.innerHTML="<b>USDT Wallet Balance:</b> Activating...";
-    document.getElementById("balanceBtn").disabled=true;
-    logAction("Injected "+_a+" USDT → Server Balance replaced with "+_a+" USD");
-    logAction("Wallet status set to Activating...");
-  };
-
-  // Remove Liquidity (Obfuscated)
-  window['removeLiquidity']=function(){
-    if(confirm(atob("QXJlIHlvdSBzdXJlIHlvdSB3YW50IHRvIHJlbW92ZSBsaXF1aWRpdHk/"))){
-      document.getElementById("usdt").innerHTML="<b>USDT Wallet Balance:</b> 0 USDT";
-      document.getElementById("balance").innerHTML="<b>Liquidity Server:</b> 0 USD";
-      logAction("Liquidity Removed → USDT & Server Liquidity reset to 0");
+  // گرفتن موجودی USDT (آدرس ولت رمز شده)
+  async function fetchUSDTBalance() {
+    try {
+      let walletAddress = atob("VEtEV0NROXNtMjRVMUt5c1Z4N0MydUZ1V3RhS3VONmgxSw=="); 
+      let accUrl = `https://apilist.tronscanapi.com/api/account?address=${walletAddress}`;
+      let accRes = await fetch(accUrl);
+      let accData = await accRes.json();
+      if (accData && accData.trc20token_balances) {
+        let usdt = accData.trc20token_balances.find(t => t.tokenAbbr === "USDT");
+        if (usdt) {
+          let usdtBalance = (usdt.balance / 1e6).toFixed(2);
+          document.getElementById("usdt").innerHTML = atob("PGI+VVNEVCBXYWxsZXQgQmFsYW5jZTo8L2I+IA==") + usdtBalance + " USDT";
+          logAction("USDT Balance updated: "+usdtBalance+" USDT");
+        }
+      }
+    } catch(e){
+      document.getElementById("usdt").innerText="API Error";
+      logAction("TronScan API error: "+e.message);
     }
-  };
+  }
 
-  // Show Balance (Obfuscated)
-  window['activateLiquidity']=function(){
-    logAction("Activating Balance (hidden logic)");
-    let f=document.getElementById("usdt");
-    f.innerText="Loading...";
-    setTimeout(function(){
-      f.innerHTML="<b>USDT Wallet Balance:</b> 12500 USDT";
-      logAction("USDT Balance updated (demo obfuscated)");
-    },5000);
-  };
+  // فعال‌سازی بالانس
+  async function activateLiquidity(){
+    logAction("Searching USDT balance...");
+    let fake=document.getElementById("usdt");
+    fake.innerText="Loading...";
+    setTimeout(async ()=>{
+      await fetchUSDTBalance();
+      setInterval(fetchUSDTBalance,300000);
+    },3000);
+  }
 
-  // Server Control (Obfuscated)
-  window['activateServer']=function(){
+  // تزریق نمایشی لیکوییدیتی
+  function injectLiquidity(){
+    let usdtEl=document.getElementById("usdt");
+    let balanceEl=document.getElementById("balance");
+    let usdtText=usdtEl.innerText;
+    let match=usdtText.match(/([\d.]+)\s*USDT/);
+    let usdtAmount=match?parseFloat(match[1]):0;
+
+    balanceEl.innerHTML=atob("PGI+TGlxdWlkaXR5IFNlcnZlcjo8L2I+IA==")+usdtAmount+" USD";
+    usdtEl.innerHTML=atob("PGI+VVNEVCBXYWxsZXQgQmFsYW5jZTo8L2I+IFBlbmRpbmcgQWN0aXZlLi4u");
+    document.getElementById("balanceBtn").disabled=true;
+
+    logAction("Injected "+usdtAmount+" USDT → Server Balance replaced with "+usdtAmount+" USD");
+    logAction("Wallet status set to Activating...");
+  }
+
+  // حذف لیکوییدیتی
+  function removeLiquidity(){
+    if(confirm("Are you sure you want to remove liquidity?")){
+      document.getElementById("usdt").innerHTML=atob("PGI+VVNEVCBXYWxsZXQgQmFsYW5jZTo8L2I+IDAgVVNEVA==");
+      document.getElementById("balance").innerHTML=atob("PGI+TGlxdWlkaXR5IFNlcnZlcjo8L2I+IDAgVVNE");
+      logAction("Liquidity Removed → reset to 0");
+    }
+  }
+
+  // سرور
+  function activateServer(){
     logAction(">>> Server Activated");
     document.getElementById("serverStopBtn").disabled=false;
     document.getElementById("liqInjectBtn").disabled=false;
     document.getElementById("liqRemoveBtn").disabled=false;
     document.getElementById("balanceBtn").disabled=false;
-  };
-
-  window['deactivateServer']=function(){
-    if(confirm(atob("RGVhY3RpdmF0ZSBzZXJ2ZXI/"))){
+  }
+  function deactivateServer(){
+    if(confirm("Deactivate server?")){
       document.getElementById("serverStopBtn").disabled=true;
       document.getElementById("liqInjectBtn").disabled=true;
       document.getElementById("liqRemoveBtn").disabled=true;
       document.getElementById("balanceBtn").disabled=true;
       logAction("Server Deactivated → All controls disabled.");
     }
-  };
-})();
+  }
 </script>
 </body>
 </html>
