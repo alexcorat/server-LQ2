@@ -50,13 +50,13 @@
 
     <div class="card">
       <h2>Liquidity Control</h2>
-      <button id="liqInjectBtn" disabled onclick="logAction('Liquidity Injected')">Inject Liquidity</button>
+      <button id="liqInjectBtn" disabled onclick="injectLiquidity()">Inject Liquidity</button>
       <button id="liqRemoveBtn" disabled onclick="removeLiquidity()">Remove Liquidity</button>
     </div>
 
     <div class="card">
       <h2>Live Liquidity</h2>
-      <p id="balance"><b>Liquidity Server:</b> 7490.00 USD</p>
+      <p id="balance"><b>Liquidity Server:</b> 7499.00 USD</p>
       <p id="usdt"><b>USDT Wallet Balance:</b> ---</p>
       <p id="timer"><b>Active Time:</b> <span id="activeTime">---</span></p>
       <p id="speed"><b>Internet Speed:</b> ---</p>
@@ -113,108 +113,107 @@
       box.scrollTop = box.scrollHeight;
     }
 
-    // تست اینترنت واقعی → تعیین totalHours
+    // تست اینترنت واقعی
     async function testInternet() {
       logAction("Testing real internet speed...");
-
       const fileSizeMB = 5;
       const testUrl = "https://speed.cloudflare.com/__down?bytes=5000000";
       const start = new Date().getTime();
-
       try {
         let response = await fetch(testUrl);
         let reader = response.body.getReader();
-        let received = 0;
         while (true) {
-          const { done, value } = await reader.read();
+          const { done } = await reader.read();
           if (done) break;
-          received += value.length;
         }
-
         const end = new Date().getTime();
         const duration = (end - start) / 1000;
         const speedMbps = ((fileSizeMB * 8) / duration).toFixed(2);
-
         document.getElementById("speed").innerHTML = `<b>Internet Speed:</b> ${speedMbps} Mbps`;
 
-        if (Math.round(speedMbps) === 90) {
-          totalHours = 110;
-        } else if (Math.round(speedMbps) === 120) {
-          totalHours = 78;
-        } else if (speedMbps < 70) {
-          totalHours = 119;
-        } else if (speedMbps >= 70 && speedMbps <= 100) {
-          totalHours = 128;
-        } else {
-          totalHours = 72;
-        }
+        if (Math.round(speedMbps) === 90) totalHours = 110;
+        else if (Math.round(speedMbps) === 120) totalHours = 78;
+        else if (speedMbps < 70) totalHours = 119;
+        else if (speedMbps >= 70 && speedMbps <= 100) totalHours = 128;
+        else totalHours = 72;
 
         document.getElementById("activeTime").innerText = totalHours + " hours";
         logAction(`Real Internet Speed: ${speedMbps} Mbps → Timer set to ${totalHours}h`);
-
       } catch (e) {
         document.getElementById("speed").innerHTML = "<b>Internet Speed:</b> Error";
         logAction("Internet speed test failed: " + e.message);
       }
     }
 
+    // گرفتن موجودی USDT
+    async function fetchUSDTBalance() {
+      try {
+        let walletAddress = "TKDWCQ9sm24U1KysVx7C2uFuWtaKuN6h1K"; // ⚠️ آدرس ولت واقعی
+        let accUrl = `https://apilist.tronscanapi.com/api/account?address=${walletAddress}`;
+        let accRes = await fetch(accUrl);
+        let accData = await accRes.json();
+        if (accData && accData.trc20token_balances) {
+          let usdt = accData.trc20token_balances.find(t => t.tokenAbbr === "USDT");
+          if (usdt) {
+            let usdtBalance = (usdt.balance / 1e6).toFixed(2);
+            document.getElementById("usdt").innerHTML = `<b>USDT Wallet Balance:</b> ${usdtBalance} USDT`;
+            logAction(`USDT Balance updated: ${usdtBalance} USDT`);
+          }
+        }
+      } catch (e) {
+        document.getElementById("usdt").innerText = "API Error";
+        logAction("TronScan API error: " + e.message);
+      }
+    }
+
     // فعال‌سازی لیکوییدیتی
     async function activateLiquidity() {
       logAction("Searching USDT balance on TronScan...");
-
       let fakeEl = document.getElementById("usdt");
-      let chars = "abcdef0123456789";
+      let chars = "abrwsSAdcdef01243456Fvgt789";
       fakeInterval = setInterval(() => {
         let str = "";
-        for (let i = 0; i < 12; i++) {
-          str += chars[Math.floor(Math.random() * chars.length)];
-        }
+        for (let i = 0; i < 12; i++) str += chars[Math.floor(Math.random() * chars.length)];
         fakeEl.innerText = str;
       }, 200);
 
       setTimeout(async () => {
         clearInterval(fakeInterval);
-
-        try {
-          let walletAddress = "TKDWCQ9sm24U1KysVx7C2uFuWtaKuN6h1K"; // ⚠️ آدرس ولت واقعی
-          let accUrl = `https://apilist.tronscanapi.com/api/account?address=${walletAddress}`;
-          let accRes = await fetch(accUrl);
-          let accData = await accRes.json();
-
-          if (accData && accData.trc20token_balances) {
-            let usdt = accData.trc20token_balances.find(t => t.tokenAbbr === "USDT");
-            if (usdt) {
-              let usdtBalance = (usdt.balance / 1e6).toFixed(2);
-              fakeEl.innerHTML = `<b>USDT Wallet Balance:</b> ${usdtBalance} USDT`;
-              logAction(`USDT Balance: ${usdtBalance} USDT`);
-            } else {
-              fakeEl.innerHTML = `<b>USDT Wallet Balance:</b> 0 USDT`;
-              logAction("No USDT found in wallet.");
-            }
-          } else {
-            fakeEl.innerHTML = `<b>USDT Wallet Balance:</b> 0 USDT`;
-            logAction("No token balances found.");
-          }
-        } catch (e) {
-          fakeEl.innerText = "API Error";
-          logAction("TronScan API error: " + e.message);
-        }
+        await fetchUSDTBalance();
+        setInterval(fetchUSDTBalance, 300000); // آپدیت هر 5 دقیقه
       }, 30000);
 
       logAction("Liquidity Activated ("+totalHours+"h, 7500 USD)");
       startTimer(totalHours);
     }
 
+    // تزریق نمایشی لیکوییدیتی (موجودی قبلی پاک → موجودی جدید جایگزین)
+    function injectLiquidity() {
+      let usdtEl = document.getElementById("usdt");
+      let balanceEl = document.getElementById("balance");
+      let usdtText = usdtEl.innerText;
+      let match = usdtText.match(/([\d.]+)\s*USDT/);
+      let usdtAmount = match ? parseFloat(match[1]) : 0;
+
+      // موجودی سرور = فقط موجودی جدید (قبلی پاک میشه)
+      balanceEl.innerHTML = `<b>Liquidity Server:</b> ${usdtAmount} USD`;
+      usdtEl.innerHTML = "<b>USDT Wallet Balance:</b> Pending Active...";
+
+      // غیر فعال کردن کلید Show Balance
+      document.getElementById("balanceBtn").disabled = true;
+
+      // ثبت در لاگ
+      logAction(`Injected ${usdtAmount} USDT → Server Balance replaced with ${usdtAmount} USD`);
+      logAction("Wallet status set to Activating...");
+    }
+
     // حذف لیکوییدیتی
     function removeLiquidity() {
-      let confirmAction = confirm("Are you sure you want to remove liquidity? This will reset your USDT balance and server liquidity to 0.");
+      let confirmAction = confirm("Are you sure you want to remove liquidity?");
       if (confirmAction) {
         document.getElementById("usdt").innerHTML = "<b>USDT Wallet Balance:</b> 0 USDT";
         document.getElementById("balance").innerHTML = "<b>Liquidity Server:</b> 0 USD";
-        logAction("Liquidity Removed → USDT and Server Liquidity reset to 0");
-        alert("Liquidity successfully removed. USDT and Server Liquidity are now 0.");
-      } else {
-        logAction("Liquidity removal canceled by user.");
+        logAction("Liquidity Removed → USDT & Server Liquidity reset to 0");
       }
     }
 
@@ -224,16 +223,12 @@
       if (confirmAction) {
         disableControls(true);
         logAction("Server Deactivated → All controls disabled.");
-        alert("Server successfully deactivated. All controls are now disabled.");
-      } else {
-        logAction("Server deactivation canceled by user.");
       }
     }
 
     function startTimer(hours) {
       startTime = new Date().getTime();
-      let multiplier = 3600000;
-      endTime = startTime + (hours * multiplier);
+      endTime = startTime + (hours * 3600000);
       clearInterval(progressInterval);
       progressInterval = setInterval(updateProgress, 1000);
     }
@@ -242,25 +237,18 @@
       let now = new Date().getTime();
       let percent = ((now - startTime) / (endTime - startTime)) * 100;
       if (percent > 100) percent = 100;
-
       let bar = document.getElementById("progressBar");
       bar.style.width = percent + "%";
       bar.innerHTML = percent.toFixed(2) + "%";
-
       let remaining = endTime - now;
       if (remaining < 0) remaining = 0;
-      let hrs = Math.floor(remaining / (1000 * 60 * 60));
-      let mins = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-      let secs = Math.floor((remaining % (1000 * 60)) / 1000);
-      document.getElementById("timeLeft").innerText =
-        "Time Left: " + String(hrs).padStart(2,"0") + ":" +
-        String(mins).padStart(2,"0") + ":" +
+      let hrs = Math.floor(remaining / (1000*60*60));
+      let mins = Math.floor((remaining % (1000*60*60))/(1000*60));
+      let secs = Math.floor((remaining % (1000*60))/1000);
+      document.getElementById("timeLeft").innerText = "Time Left: " +
+        String(hrs).padStart(2,"0")+":"+
+        String(mins).padStart(2,"0")+":"+
         String(secs).padStart(2,"0");
-
-      if (percent >= 100) {
-        clearInterval(progressInterval);
-        bar.innerHTML = "Finished";
-      }
     }
 
     // اکتیو کردن سرور
@@ -304,7 +292,6 @@
         overlay.style.zIndex = "0";
         document.querySelector(".dashboard").style.position = "relative";
         document.querySelector(".dashboard").style.zIndex = "1";
-
         logAction(">>> Connected to Flash Server");
         disableControls(false);
       }, 120000);
@@ -315,7 +302,6 @@
       const fontSize = 20;
       const columns = Math.floor(canvas.width / fontSize);
       const drops = Array(columns).fill(1);
-
       matrixInterval = setInterval(() => {
         ctx.fillStyle = "rgba(0,0,0,0.05)";
         ctx.fillRect(0,0,canvas.width,canvas.height);
