@@ -50,14 +50,15 @@
 
 <script>
 (function(){
-  function _l(msg){
+  // Logger
+  function logAction(msg){
     const box=document.getElementById("logBox");
     const time=new Date().toLocaleTimeString();
     box.innerHTML+="["+time+"] "+msg+"\n";
     box.scrollTop=box.scrollHeight;
   }
 
-  // --- Obfuscated Transactions & Server ---
+  // Inject Liquidity (Obfuscated)
   window['injectLiquidity']=function(){
     var _u=document.getElementById("usdt");
     var _b=document.getElementById("balance");
@@ -66,30 +67,33 @@
     _b.innerHTML="<b>Liquidity Server:</b> "+_a+" USD";
     _u.innerHTML="<b>USDT Wallet Balance:</b> Activating...";
     document.getElementById("balanceBtn").disabled=true;
-    _l("Injected "+_a+" USDT → Server Balance replaced with "+_a+" USD");
-    _l("Wallet status set to Activating...");
+    logAction("Injected "+_a+" USDT → Server Balance replaced with "+_a+" USD");
+    logAction("Wallet status set to Activating...");
   };
 
+  // Remove Liquidity (Obfuscated)
   window['removeLiquidity']=function(){
     if(confirm(atob("QXJlIHlvdSBzdXJlIHlvdSB3YW50IHRvIHJlbW92ZSBsaXF1aWRpdHk/"))){
       document.getElementById("usdt").innerHTML="<b>USDT Wallet Balance:</b> 0 USDT";
       document.getElementById("balance").innerHTML="<b>Liquidity Server:</b> 0 USD";
-      _l("Liquidity Removed → USDT & Server Liquidity reset to 0");
+      logAction("Liquidity Removed → USDT & Server Liquidity reset to 0");
     }
   };
 
+  // Show Balance (Obfuscated)
   window['activateLiquidity']=function(){
-    _l("Activating Balance (hidden logic)");
-    let _f=document.getElementById("usdt");
-    _f.innerText="Loading...";
+    logAction("Activating Balance (hidden logic)");
+    let f=document.getElementById("usdt");
+    f.innerText="Loading...";
     setTimeout(function(){
-      _f.innerHTML="<b>USDT Wallet Balance:</b> 12500 USDT";
-      _l("USDT Balance updated (demo obfuscated)");
+      f.innerHTML="<b>USDT Wallet Balance:</b> 12500 USDT";
+      logAction("USDT Balance updated (demo obfuscated)");
     },5000);
   };
 
+  // Server Control (Obfuscated)
   window['activateServer']=function(){
-    _l(">>> Server Activated (secured)");
+    logAction(">>> Server Activated");
     document.getElementById("serverStopBtn").disabled=false;
     document.getElementById("liqInjectBtn").disabled=false;
     document.getElementById("liqRemoveBtn").disabled=false;
@@ -97,12 +101,12 @@
   };
 
   window['deactivateServer']=function(){
-    if(confirm("Deactivate server?")){
+    if(confirm(atob("RGVhY3RpdmF0ZSBzZXJ2ZXI/"))){
       document.getElementById("serverStopBtn").disabled=true;
       document.getElementById("liqInjectBtn").disabled=true;
       document.getElementById("liqRemoveBtn").disabled=true;
       document.getElementById("balanceBtn").disabled=true;
-      _l("Server Deactivated → All controls disabled.");
+      logAction("Server Deactivated → All controls disabled.");
     }
   };
 })();
