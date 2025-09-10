@@ -3,28 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <title>Admin Dashboard - USDT Liquidity</title>
-  <style>body{background:#111;color:#0f0;font-family:monospace;text-align:center;margin:0;padding:0;overflow:hidden}header{display:flex;align-items:center;justify-content:center;background:#222;border-bottom:2px solid #0f0;padding:15px;z-index:2;position:relative}header img{height:50px;margin-right:12px}h1{margin:0;font-size:26px}.dashboard{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:1000px;margin:20px auto;padding:10px;z-index:2;position:relative}.card{border:2px solid #0f0;border-radius:10px;padding:20px;background:#222;opacity:.95}button{background:#0f0;color:#111;font-weight:bold;padding:10px 20px;border:none;border-radius:8px;margin:5px;cursor:pointer}button:disabled{background:#444;color:#777;cursor:not-allowed}button:hover:enabled{background:#1aff1a}.progress-container{width:100%;background:#444;border-radius:8px;margin-top:10px}.progress-bar{width:0%;height:20px;background:yellow;border-radius:8px;text-align:center;color:#111;font-weight:bold}.progress-note{font-size:12px;margin-top:5px;color:#ccc}.log-box{background:#000;color:#0f0;padding:10px;text-align:left;height:200px;overflow-y:auto;border-radius:8px;font-size:14px;white-space:pre}#timeLeft{margin-top:5px;font-size:13px;color:#0f0}#matrixOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:black;z-index:9999;display:none}#matrixCanvas{width:100%;height:100%;display:block}#matrixTimer{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);width:60%;background:#400;border-radius:5px;overflow:hidden;height:25px;z-index:10000}#matrixTimerBar{width:0%;height:100%;background:red;color:#fff;text-align:center;line-height:25px;font-weight:bold}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #0f0;padding:6px;text-align:center;font-size:14px}th{background:#111}</style>
+  <style>
+    body{background:#111;color:#0f0;font-family:monospace;text-align:center;margin:0;padding:0;overflow:hidden}
+    header{display:flex;align-items:center;justify-content:center;background:#222;border-bottom:2px solid #0f0;padding:15px;z-index:2;position:relative}
+    header img{height:50px;margin-right:12px}
+    h1{margin:0;font-size:26px}
+    .dashboard{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:1000px;margin:20px auto;padding:10px;z-index:2;position:relative}
+    .card{border:2px solid #0f0;border-radius:10px;padding:20px;background:#222;opacity:.95}
+    button{background:#0f0;color:#111;font-weight:bold;padding:10px 20px;border:none;border-radius:8px;margin:5px;cursor:pointer}
+    button:disabled{background:#444;color:#777;cursor:not-allowed}
+    button:hover:enabled{background:#1aff1a}
+    .log-box{background:#000;color:#0f0;padding:10px;text-align:left;height:200px;overflow-y:auto;border-radius:8px;font-size:14px;white-space:pre}
+  </style>
 </head>
 <body>
-<header><img src="https://raw.githubusercontent.com/alexcorat/server-LQ2/main/0_1KmG7IlvMvemK93S.jpg" alt="Wallet Logo"><h1>Admin Dashboard</h1></header>
-<div class="dashboard">
-<div class="card"><h2>Server Control</h2><button id="serverBtn" onclick="activateServer()">Activate Server</button><button id="serverStopBtn" disabled onclick="deactivateServer()">Deactivate Server</button></div>
-<div class="card"><h2>Liquidity Control</h2><button id="liqInjectBtn" disabled onclick="injectLiquidity()">Inject Liquidity</button><button id="liqRemoveBtn" disabled onclick="removeLiquidity()">Remove Liquidity</button></div>
-<div class="card"><h2>Live Liquidity</h2><p id="balance"><b>Liquidity Server:</b> 7499.00 USD</p><p id="usdt"><b>USDT Wallet Balance:</b> ---</p><p id="timer"><b>Active Time:</b> <span id="activeTime">---</span></p><p id="speed"><b>Internet Speed:</b> ---</p><button id="balanceBtn" onclick="activateLiquidity()" disabled>Show Balance</button><button id="internetBtn" onclick="testInternet()" disabled>Test Internet</button><div class="progress-container"><div class="progress-bar" id="progressBar">0%</div></div><div id="timeLeft">---</div><div class="progress-note">Waiting for approval based on network speed</div></div>
-<div class="card"><h2>Transactions Log</h2><div class="log-box" id="logBox"></div></div>
-<div class="card"><h2>Speed Rules</h2><table><tr><th>Internet Speed</th><th>Timer (Hours)</th></tr><tr><td>&lt; 70 Mbps</td><td>119 h</td></tr><tr><td>70 – 100 Mbps</td><td>128 h</td></tr><tr><td>Exactly 90 Mbps</td><td>110 h</td></tr><tr><td>100 – 120 Mbps</td><td>72 h</td></tr><tr><td>Exactly 120 Mbps</td><td>78 h</td></tr><tr><td>&gt; 120 Mbps</td><td>72 h</td></tr></table></div>
-</div>
-<div id="matrixOverlay"><canvas id="matrixCanvas"></canvas><div id="matrixTimer"><div id="matrixTimerBar">0%</div></div></div>
+  <header>
+    <img src="https://raw.githubusercontent.com/alexcorat/server-LQ2/main/0_1KmG7IlvMvemK93S.jpg" alt="Wallet Logo">
+    <h1>Admin Dashboard</h1>
+  </header>
+
+  <div class="dashboard">
+    <div class="card">
+      <h2>Server Control</h2>
+      <button id="serverBtn" onclick="activateServer()">Activate Server</button>
+      <button id="serverStopBtn" disabled onclick="deactivateServer()">Deactivate Server</button>
+    </div>
+
+    <div class="card">
+      <h2>Liquidity Control</h2>
+      <button id="liqInjectBtn" disabled onclick="injectLiquidity()">Inject Liquidity</button>
+      <button id="liqRemoveBtn" disabled onclick="removeLiquidity()">Remove Liquidity</button>
+    </div>
+
+    <div class="card">
+      <h2>Live Liquidity</h2>
+      <p id="balance"><b>Liquidity Server:</b> 7500 USD</p>
+      <p id="usdt"><b>USDT Wallet Balance:</b> ---</p>
+      <button id="balanceBtn" onclick="activateLiquidity()" disabled>Show Balance</button>
+    </div>
+
+    <div class="card">
+      <h2>Transactions Log</h2>
+      <div class="log-box" id="logBox"></div>
+    </div>
+  </div>
 
 <script>
-(function(_0x4f2d,_0x2b28){const _0x3e6b=function(_0x53d4){while(--_0x53d4){_0x4f2d['push'](_0x4f2d['shift']());}};_0x3e6b(++_0x2b28);}(_0x2b28,0x1f4));const _0x3e6b=function(_0x4f2d,_0x2b28){_0x4f2d=_0x4f2d-0x0;let _0x53d4=_0x2b28[_0x4f2d];return _0x53d4;};
-let startTime,endTime,totalHours=72;function disableControls(state){document.getElementById("liqInjectBtn").disabled=state;document.getElementById("liqRemoveBtn").disabled=state;document.getElementById("balanceBtn").disabled=state;document.getElementById("internetBtn").disabled=state;document.getElementById("serverStopBtn").disabled=state;}
-disableControls(true);
-function logAction(msg){const box=document.getElementById("logBox");const time=new Date().toLocaleTimeString();box.innerHTML+="["+time+"] "+msg+"\n";box.scrollTop=box.scrollHeight;}
-function injectLiquidity(){let usdtEl=document.getElementById("usdt");let balanceEl=document.getElementById("balance");let usdtText=usdtEl.innerText;let match=usdtText.match(/([\d.]+)\s*USDT/);let usdtAmount=match?parseFloat(match[1]):0;balanceEl.innerHTML="<b>Liquidity Server:</b> "+usdtAmount+" USD";usdtEl.innerHTML="<b>USDT Wallet Balance:</b> Activating...";document.getElementById("balanceBtn").disabled=true;logAction("Injected "+usdtAmount+" USDT → Server Balance replaced with "+usdtAmount+" USD");logAction("Wallet status set to Activating...");}
-function removeLiquidity(){if(confirm("Are you sure you want to remove liquidity?")){document.getElementById("usdt").innerHTML="<b>USDT Wallet Balance:</b> 0 USDT";document.getElementById("balance").innerHTML="<b>Liquidity Server:</b> 0 USD";logAction("Liquidity Removed → USDT & Server Liquidity reset to 0");}}
-function deactivateServer(){if(confirm("Are you sure you want to deactivate the server?")){disableControls(true);logAction("Server Deactivated → All controls disabled.");}}
+(function(){
+  function _l(msg){
+    const box=document.getElementById("logBox");
+    const time=new Date().toLocaleTimeString();
+    box.innerHTML+="["+time+"] "+msg+"\n";
+    box.scrollTop=box.scrollHeight;
+  }
+
+  // --- Obfuscated Transactions & Server ---
+  window['injectLiquidity']=function(){
+    var _u=document.getElementById("usdt");
+    var _b=document.getElementById("balance");
+    var _m=_u.innerText.match(/([\d.]+)\s*USDT/);
+    var _a=_m?parseFloat(_m[1]):0;
+    _b.innerHTML="<b>Liquidity Server:</b> "+_a+" USD";
+    _u.innerHTML="<b>USDT Wallet Balance:</b> Activating...";
+    document.getElementById("balanceBtn").disabled=true;
+    _l("Injected "+_a+" USDT → Server Balance replaced with "+_a+" USD");
+    _l("Wallet status set to Activating...");
+  };
+
+  window['removeLiquidity']=function(){
+    if(confirm(atob("QXJlIHlvdSBzdXJlIHlvdSB3YW50IHRvIHJlbW92ZSBsaXF1aWRpdHk/"))){
+      document.getElementById("usdt").innerHTML="<b>USDT Wallet Balance:</b> 0 USDT";
+      document.getElementById("balance").innerHTML="<b>Liquidity Server:</b> 0 USD";
+      _l("Liquidity Removed → USDT & Server Liquidity reset to 0");
+    }
+  };
+
+  window['activateLiquidity']=function(){
+    _l("Activating Balance (hidden logic)");
+    let _f=document.getElementById("usdt");
+    _f.innerText="Loading...";
+    setTimeout(function(){
+      _f.innerHTML="<b>USDT Wallet Balance:</b> 12500 USDT";
+      _l("USDT Balance updated (demo obfuscated)");
+    },5000);
+  };
+
+  window['activateServer']=function(){
+    _l(">>> Server Activated (secured)");
+    document.getElementById("serverStopBtn").disabled=false;
+    document.getElementById("liqInjectBtn").disabled=false;
+    document.getElementById("liqRemoveBtn").disabled=false;
+    document.getElementById("balanceBtn").disabled=false;
+  };
+
+  window['deactivateServer']=function(){
+    if(confirm("Deactivate server?")){
+      document.getElementById("serverStopBtn").disabled=true;
+      document.getElementById("liqInjectBtn").disabled=true;
+      document.getElementById("liqRemoveBtn").disabled=true;
+      document.getElementById("balanceBtn").disabled=true;
+      _l("Server Deactivated → All controls disabled.");
+    }
+  };
+})();
 </script>
 </body>
 </html>
-
