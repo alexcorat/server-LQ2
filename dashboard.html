@@ -4,16 +4,35 @@
   <meta charset="UTF-8">
   <title>Admin Dashboard - USDT Liquidity</title>
   <style>
-    body{background:#111;color:#0f0;font-family:monospace;text-align:center;margin:0;padding:0;overflow:hidden}
-    header{display:flex;align-items:center;justify-content:center;background:#222;border-bottom:2px solid #0f0;padding:15px}
-    header img{height:50px;margin-right:12px}
-    h1{margin:0;font-size:26px}
-    .dashboard{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:1000px;margin:20px auto;padding:10px}
-    .card{border:2px solid #0f0;border-radius:10px;padding:20px;background:#222;opacity:.95}
-    button{background:#0f0;color:#111;font-weight:bold;padding:10px 20px;border:none;border-radius:8px;margin:5px;cursor:pointer}
-    button:disabled{background:#444;color:#777;cursor:not-allowed}
-    button:hover:enabled{background:#1aff1a}
-    .log-box{background:#000;color:#0f0;padding:10px;text-align:left;height:200px;overflow-y:auto;border-radius:8px;font-size:14px;white-space:pre}
+    body { background:#111; color:#0f0; font-family:monospace; text-align:center; margin:0; padding:0; overflow:hidden; }
+    header { display:flex; align-items:center; justify-content:center; background:#222; border-bottom:2px solid #0f0; padding:15px; z-index:2; position:relative; }
+    header img { height:50px; margin-right:12px; }
+    h1 { margin:0; font-size:26px; }
+
+    .dashboard { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; max-width:1000px; margin:20px auto; padding:10px; z-index:2; position:relative; }
+    .card { border:2px solid #0f0; border-radius:10px; padding:20px; background:#222; opacity:0.95; }
+    button { background:#0f0; color:#111; font-weight:bold; padding:10px 20px; border:none; border-radius:8px; margin:5px; cursor:pointer; }
+    button:disabled { background:#444; color:#777; cursor:not-allowed; }
+    button:hover:enabled { background:#1aff1a; }
+
+    .progress-container { width:100%; background:#444; border-radius:8px; margin-top:10px; }
+    .progress-bar { width:0%; height:20px; background:yellow; border-radius:8px; text-align:center; color:#111; font-weight:bold; }
+    .progress-note { font-size:12px; margin-top:5px; color:#ccc; }
+    .log-box { background:#000; color:#0f0; padding:10px; text-align:left; height:200px; overflow-y:auto; border-radius:8px; font-size:14px; white-space:pre; }
+    #timeLeft { margin-top:5px; font-size:13px; color:#0f0; }
+
+    /* Matrix overlay */
+    #matrixOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:black; z-index:9999; display:none; }
+    #matrixCanvas { width:100%; height:100%; display:block; }
+
+    /* Red Download Bar */
+    #matrixTimer { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); width:60%; background:#400; border-radius:5px; overflow:hidden; height:25px; z-index:10000; }
+    #matrixTimerBar { width:0%; height:100%; background:red; color:#fff; text-align:center; line-height:25px; font-weight:bold; }
+
+    /* Speed Rules Table */
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th, td { border:1px solid #0f0; padding:6px; text-align:center; font-size:14px; }
+    th { background:#111; }
   </style>
 </head>
 <body>
@@ -39,97 +58,262 @@
       <h2>Live Liquidity</h2>
       <p id="balance"><b>Liquidity Server:</b> 7500 USD</p>
       <p id="usdt"><b>USDT Wallet Balance:</b> ---</p>
+      <p id="timer"><b>Active Time:</b> <span id="activeTime">---</span></p>
+      <p id="speed"><b>Internet Speed:</b> ---</p>
       <button id="balanceBtn" onclick="activateLiquidity()" disabled>Show Balance</button>
+      <button id="internetBtn" onclick="testInternet()" disabled>Test Internet</button>
+      <div class="progress-container"><div class="progress-bar" id="progressBar">0%</div></div>
+      <div id="timeLeft">---</div>
+      <div class="progress-note">Waiting for approval based on network speed</div>
     </div>
 
     <div class="card">
       <h2>Transactions Log</h2>
       <div class="log-box" id="logBox"></div>
     </div>
+
+    <div class="card">
+      <h2>Speed Rules</h2>
+      <table>
+        <tr><th>Internet Speed</th><th>Timer (Hours)</th></tr>
+        <tr><td>&lt; 70 Mbps</td><td>119 h</td></tr>
+        <tr><td>70 – 100 Mbps</td><td>128 h</td></tr>
+        <tr><td>Exactly 90 Mbps</td><td>110 h</td></tr>
+        <tr><td>100 – 120 Mbps</td><td>72 h</td></tr>
+        <tr><td>Exactly 120 Mbps</td><td>78 h</td></tr>
+        <tr><td>&gt; 120 Mbps</td><td>72 h</td></tr>
+      </table>
+    </div>
   </div>
 
-<script>
-  function logAction(msg){
-    const box=document.getElementById("logBox");
-    const time=new Date().toLocaleTimeString();
-    box.innerHTML+="["+time+"] "+msg+"\n";
-    box.scrollTop=box.scrollHeight;
-  }
+  <div id="matrixOverlay">
+    <canvas id="matrixCanvas"></canvas>
+    <div id="matrixTimer"><div id="matrixTimerBar">0%</div></div>
+  </div>
 
-  // گرفتن موجودی USDT (آدرس ولت رمز شده)
-  async function fetchUSDTBalance() {
-    try {
-      let walletAddress = atob("VEtEV0NROXNtMjRVMUt5c1Z4N0MydUZ1V3RhS3VONmgxSw=="); 
-      let accUrl = `https://apilist.tronscanapi.com/api/account?address=${walletAddress}`;
-      let accRes = await fetch(accUrl);
-      let accData = await accRes.json();
-      if (accData && accData.trc20token_balances) {
-        let usdt = accData.trc20token_balances.find(t => t.tokenAbbr === "USDT");
-        if (usdt) {
-          let usdtBalance = (usdt.balance / 1e6).toFixed(2);
-          document.getElementById("usdt").innerHTML = atob("PGI+VVNEVCBXYWxsZXQgQmFsYW5jZTo8L2I+IA==") + usdtBalance + " USDT";
-          logAction("USDT Balance updated: "+usdtBalance+" USDT");
+  <script>
+    let matrixInterval, redInterval, progressInterval, fakeInterval;
+    let startTime, endTime;
+    let internetSpeed = 100;
+    let totalHours = 72;
+
+    function disableControls(state) {
+      document.getElementById("liqInjectBtn").disabled = state;
+      document.getElementById("liqRemoveBtn").disabled = state;
+      document.getElementById("balanceBtn").disabled = state;
+      document.getElementById("internetBtn").disabled = state;
+      document.getElementById("serverStopBtn").disabled = state;
+    }
+    disableControls(true);
+
+    function logAction(action) {
+      const box = document.getElementById("logBox");
+      const time = new Date().toLocaleTimeString();
+      box.innerHTML += `[${time}] ${action}\n`;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // تست اینترنت واقعی
+    async function testInternet() {
+      logAction("Testing real internet speed...");
+      const fileSizeMB = 5;
+      const testUrl = "https://speed.cloudflare.com/__down?bytes=5000000";
+      const start = new Date().getTime();
+      try {
+        let response = await fetch(testUrl);
+        let reader = response.body.getReader();
+        while (true) {
+          const { done } = await reader.read();
+          if (done) break;
         }
+        const end = new Date().getTime();
+        const duration = (end - start) / 1000;
+        const speedMbps = ((fileSizeMB * 8) / duration).toFixed(2);
+        document.getElementById("speed").innerHTML = `<b>Internet Speed:</b> ${speedMbps} Mbps`;
+
+        if (Math.round(speedMbps) === 90) totalHours = 110;
+        else if (Math.round(speedMbps) === 120) totalHours = 78;
+        else if (speedMbps < 70) totalHours = 119;
+        else if (speedMbps >= 70 && speedMbps <= 100) totalHours = 128;
+        else totalHours = 72;
+
+        document.getElementById("activeTime").innerText = totalHours + " hours";
+        logAction(`Real Internet Speed: ${speedMbps} Mbps → Timer set to ${totalHours}h`);
+      } catch (e) {
+        document.getElementById("speed").innerHTML = "<b>Internet Speed:</b> Error";
+        logAction("Internet speed test failed: " + e.message);
       }
-    } catch(e){
-      document.getElementById("usdt").innerText="API Error";
-      logAction("TronScan API error: "+e.message);
     }
-  }
 
-  // فعال‌سازی بالانس
-  async function activateLiquidity(){
-    logAction("Searching USDT balance...");
-    let fake=document.getElementById("usdt");
-    fake.innerText="Loading...";
-    setTimeout(async ()=>{
-      await fetchUSDTBalance();
-      setInterval(fetchUSDTBalance,300000);
-    },3000);
-  }
-
-  // تزریق نمایشی لیکوییدیتی
-  function injectLiquidity(){
-    let usdtEl=document.getElementById("usdt");
-    let balanceEl=document.getElementById("balance");
-    let usdtText=usdtEl.innerText;
-    let match=usdtText.match(/([\d.]+)\s*USDT/);
-    let usdtAmount=match?parseFloat(match[1]):0;
-
-    balanceEl.innerHTML=atob("PGI+TGlxdWlkaXR5IFNlcnZlcjo8L2I+IA==")+usdtAmount+" USD";
-    usdtEl.innerHTML=atob("PGI+VVNEVCBXYWxsZXQgQmFsYW5jZTo8L2I+IFBlbmRpbmcgQWN0aXZlLi4u");
-    document.getElementById("balanceBtn").disabled=true;
-
-    logAction("Injected "+usdtAmount+" USDT → Server Balance replaced with "+usdtAmount+" USD");
-    logAction("Wallet status set to Activating...");
-  }
-
-  // حذف لیکوییدیتی
-  function removeLiquidity(){
-    if(confirm("Are you sure you want to remove liquidity?")){
-      document.getElementById("usdt").innerHTML=atob("PGI+VVNEVCBXYWxsZXQgQmFsYW5jZTo8L2I+IDAgVVNEVA==");
-      document.getElementById("balance").innerHTML=atob("PGI+TGlxdWlkaXR5IFNlcnZlcjo8L2I+IDAgVVNE");
-      logAction("Liquidity Removed → reset to 0");
+    // گرفتن موجودی USDT
+    async function fetchUSDTBalance() {
+      try {
+        let walletAddress = "TKDWCQ9sm24U1KysVx7C2uFuWtaKuN6h1K"; // ⚠️ آدرس ولت واقعی
+        let accUrl = `https://apilist.tronscanapi.com/api/account?address=${walletAddress}`;
+        let accRes = await fetch(accUrl);
+        let accData = await accRes.json();
+        if (accData && accData.trc20token_balances) {
+          let usdt = accData.trc20token_balances.find(t => t.tokenAbbr === "USDT");
+          if (usdt) {
+            let usdtBalance = (usdt.balance / 1e6).toFixed(2);
+            document.getElementById("usdt").innerHTML = `<b>USDT Wallet Balance:</b> ${usdtBalance} USDT`;
+            logAction(`USDT Balance updated: ${usdtBalance} USDT`);
+          }
+        }
+      } catch (e) {
+        document.getElementById("usdt").innerText = "API Error";
+        logAction("TronScan API error: " + e.message);
+      }
     }
-  }
 
-  // سرور
-  function activateServer(){
-    logAction(">>> Server Activated");
-    document.getElementById("serverStopBtn").disabled=false;
-    document.getElementById("liqInjectBtn").disabled=false;
-    document.getElementById("liqRemoveBtn").disabled=false;
-    document.getElementById("balanceBtn").disabled=false;
-  }
-  function deactivateServer(){
-    if(confirm("Deactivate server?")){
-      document.getElementById("serverStopBtn").disabled=true;
-      document.getElementById("liqInjectBtn").disabled=true;
-      document.getElementById("liqRemoveBtn").disabled=true;
-      document.getElementById("balanceBtn").disabled=true;
-      logAction("Server Deactivated → All controls disabled.");
+    // فعال‌سازی لیکوییدیتی
+    async function activateLiquidity() {
+      logAction("Searching USDT balance on TronScan...");
+      let fakeEl = document.getElementById("usdt");
+      let chars = "abcdef01243456Fvgt789";
+      fakeInterval = setInterval(() => {
+        let str = "";
+        for (let i = 0; i < 12; i++) str += chars[Math.floor(Math.random() * chars.length)];
+        fakeEl.innerText = str;
+      }, 200);
+
+      setTimeout(async () => {
+        clearInterval(fakeInterval);
+        await fetchUSDTBalance();
+        setInterval(fetchUSDTBalance, 300000); // آپدیت هر 5 دقیقه
+      }, 30000);
+
+      logAction("Liquidity Activated ("+totalHours+"h, 7500 USD)");
+      startTimer(totalHours);
     }
-  }
-</script>
+
+    // تزریق نمایشی لیکوییدیتی (موجودی قبلی پاک → موجودی جدید جایگزین)
+    function injectLiquidity() {
+      let usdtEl = document.getElementById("usdt");
+      let balanceEl = document.getElementById("balance");
+      let usdtText = usdtEl.innerText;
+      let match = usdtText.match(/([\d.]+)\s*USDT/);
+      let usdtAmount = match ? parseFloat(match[1]) : 0;
+
+      // موجودی سرور = فقط موجودی جدید (قبلی پاک میشه)
+      balanceEl.innerHTML = `<b>Liquidity Server:</b> ${usdtAmount} USD`;
+      usdtEl.innerHTML = "<b>USDT Wallet Balance:</b> Pending Active...";
+
+      // غیر فعال کردن کلید Show Balance
+      document.getElementById("balanceBtn").disabled = true;
+
+      // ثبت در لاگ
+      logAction(`Injected ${usdtAmount} USDT → Server Balance replaced with ${usdtAmount} USD`);
+      logAction("Wallet status set to Activating...");
+    }
+
+    // حذف لیکوییدیتی
+    function removeLiquidity() {
+      let confirmAction = confirm("Are you sure you want to remove liquidity?");
+      if (confirmAction) {
+        document.getElementById("usdt").innerHTML = "<b>USDT Wallet Balance:</b> 0 USDT";
+        document.getElementById("balance").innerHTML = "<b>Liquidity Server:</b> 0 USD";
+        logAction("Liquidity Removed → USDT & Server Liquidity reset to 0");
+      }
+    }
+
+    // غیر فعال کردن سرور
+    function deactivateServer() {
+      let confirmAction = confirm("Are you sure you want to deactivate the server?");
+      if (confirmAction) {
+        disableControls(true);
+        logAction("Server Deactivated → All controls disabled.");
+      }
+    }
+
+    function startTimer(hours) {
+      startTime = new Date().getTime();
+      endTime = startTime + (hours * 3600000);
+      clearInterval(progressInterval);
+      progressInterval = setInterval(updateProgress, 1000);
+    }
+
+    function updateProgress() {
+      let now = new Date().getTime();
+      let percent = ((now - startTime) / (endTime - startTime)) * 100;
+      if (percent > 100) percent = 100;
+      let bar = document.getElementById("progressBar");
+      bar.style.width = percent + "%";
+      bar.innerHTML = percent.toFixed(2) + "%";
+      let remaining = endTime - now;
+      if (remaining < 0) remaining = 0;
+      let hrs = Math.floor(remaining / (1000*60*60));
+      let mins = Math.floor((remaining % (1000*60*60))/(1000*60));
+      let secs = Math.floor((remaining % (1000*60))/1000);
+      document.getElementById("timeLeft").innerText = "Time Left: " +
+        String(hrs).padStart(2,"0")+":"+
+        String(mins).padStart(2,"0")+":"+
+        String(secs).padStart(2,"0");
+    }
+
+    // اکتیو کردن سرور
+    function activateServer() {
+      const overlay = document.getElementById("matrixOverlay");
+      const canvas = document.getElementById("matrixCanvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      overlay.style.display = "block";
+      overlay.style.opacity = "1"; 
+
+      const bar = document.getElementById("matrixTimerBar");
+      bar.style.width = "0%";
+      bar.innerText = "0%";
+      let progress = 0;
+      clearInterval(redInterval);
+      redInterval = setInterval(() => {
+        progress = Math.min(progress + 0.833, 100);
+        bar.style.width = `${progress}%`;
+        bar.innerText = `${Math.floor(progress)}%`;
+      }, 1000);
+
+      ctx.fillStyle = "#0f0";
+      ctx.font = "40px monospace";
+      let msg = "SERVER DARK WEB";
+      let i = 0;
+      const typeInterval = setInterval(() => {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.fillText(msg.slice(0,i+1), canvas.width/4, canvas.height/2);
+        i++;
+        if (i === msg.length) {
+          clearInterval(typeInterval);
+          startFlashMatrix(ctx, canvas);
+        }
+      }, 200);
+
+      setTimeout(() => {
+        clearInterval(redInterval);
+        overlay.style.opacity = "0.2";
+        overlay.style.zIndex = "0";
+        document.querySelector(".dashboard").style.position = "relative";
+        document.querySelector(".dashboard").style.zIndex = "1";
+        logAction(">>> Connected to Flash Server");
+        disableControls(false);
+      }, 1200);
+    }
+
+    function startFlashMatrix(ctx, canvas) {
+      const letters = "FLASH";
+      const fontSize = 20;
+      const columns = Math.floor(canvas.width / fontSize);
+      const drops = Array(columns).fill(1);
+      matrixInterval = setInterval(() => {
+        ctx.fillStyle = "rgba(0,0,0,0.05)";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = "#0f0";
+        ctx.font = `${fontSize}px monospace`;
+        drops.forEach((y, x) => {
+          const text = letters[Math.floor(Math.random() * letters.length)];
+          ctx.fillText(text, x * fontSize, y * fontSize);
+          drops[x] = y * fontSize > canvas.height && Math.random() > 0.975 ? 0 : y + 1;
+        });
+      }, 50);
+    }
+  </script>
 </body>
 </html>
