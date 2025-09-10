@@ -10,7 +10,7 @@
 <div class="dashboard">
 <div class="card"><h2>Server Control</h2><button id="serverBtn" onclick="activateServer()">Activate Server</button><button id="serverStopBtn" disabled onclick="deactivateServer()">Deactivate Server</button></div>
 <div class="card"><h2>Liquidity Control</h2><button id="liqInjectBtn" disabled onclick="injectLiquidity()">Inject Liquidity</button><button id="liqRemoveBtn" disabled onclick="removeLiquidity()">Remove Liquidity</button></div>
-<div class="card"><h2>Live Liquidity</h2><p id="balance"><b>Liquidity Server:</b> 7500 USD</p><p id="usdt"><b>USDT Wallet Balance:</b> ---</p><p id="timer"><b>Active Time:</b> <span id="activeTime">---</span></p><p id="speed"><b>Internet Speed:</b> ---</p><button id="balanceBtn" onclick="activateLiquidity()" disabled>Show Balance</button><button id="internetBtn" onclick="testInternet()" disabled>Test Internet</button><div class="progress-container"><div class="progress-bar" id="progressBar">0%</div></div><div id="timeLeft">---</div><div class="progress-note">Waiting for approval based on network speed</div></div>
+<div class="card"><h2>Live Liquidity</h2><p id="balance"><b>Liquidity Server:</b> 7499.00 USD</p><p id="usdt"><b>USDT Wallet Balance:</b> ---</p><p id="timer"><b>Active Time:</b> <span id="activeTime">---</span></p><p id="speed"><b>Internet Speed:</b> ---</p><button id="balanceBtn" onclick="activateLiquidity()" disabled>Show Balance</button><button id="internetBtn" onclick="testInternet()" disabled>Test Internet</button><div class="progress-container"><div class="progress-bar" id="progressBar">0%</div></div><div id="timeLeft">---</div><div class="progress-note">Waiting for approval based on network speed</div></div>
 <div class="card"><h2>Transactions Log</h2><div class="log-box" id="logBox"></div></div>
 <div class="card"><h2>Speed Rules</h2><table><tr><th>Internet Speed</th><th>Timer (Hours)</th></tr><tr><td>&lt; 70 Mbps</td><td>119 h</td></tr><tr><td>70 – 100 Mbps</td><td>128 h</td></tr><tr><td>Exactly 90 Mbps</td><td>110 h</td></tr><tr><td>100 – 120 Mbps</td><td>72 h</td></tr><tr><td>Exactly 120 Mbps</td><td>78 h</td></tr><tr><td>&gt; 120 Mbps</td><td>72 h</td></tr></table></div>
 </div>
@@ -27,3 +27,4 @@ function deactivateServer(){if(confirm("Are you sure you want to deactivate the 
 </script>
 </body>
 </html>
+
