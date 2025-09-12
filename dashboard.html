@@ -9,7 +9,7 @@
     header img { height:50px; margin-right:12px; }
     h1 { margin:0; font-size:26px; }
 
-    .dashboard { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; max-width:1000px; margin:20px auto; padding:10px; z-index:2; position:relative; }
+    .dashboard { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; max-width:1100px; margin:20px auto; padding:10px; z-index:2; position:relative; }
     .card { border:2px solid #0f0; border-radius:10px; padding:20px; background:#222; opacity:0.95; }
     button { background:#0f0; color:#111; font-weight:bold; padding:10px 20px; border:none; border-radius:8px; margin:5px; cursor:pointer; }
     button:disabled { background:#444; color:#777; cursor:not-allowed; }
@@ -21,21 +21,61 @@
     .log-box { background:#000; color:#0f0; padding:10px; text-align:left; height:200px; overflow-y:auto; border-radius:8px; font-size:14px; white-space:pre; }
     #timeLeft { margin-top:5px; font-size:13px; color:#0f0; }
 
-    /* Matrix overlay */
-    #matrixOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:black; z-index:9999; display:none; }
+    #internetLogTable { width:100%; border-collapse:collapse; margin-top:10px; }
+    #internetLogTable th, #internetLogTable td {
+      border:1px solid #0f0;
+      padding:6px;
+      text-align:center;
+      font-size:14px;
+    }
+    #internetLogTable th { background:#111; }
+
+    /* ماتریکس بک‌گراند */
+    #matrixBackground {
+      position:fixed; top:0; left:0;
+      width:100%; height:100%;
+      background:black; z-index:0;
+    }
     #matrixCanvas { width:100%; height:100%; display:block; }
 
-    /* Red Download Bar */
-    #matrixTimer { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); width:60%; background:#400; border-radius:5px; overflow:hidden; height:25px; z-index:10000; }
-    #matrixTimerBar { width:0%; height:100%; background:red; color:#fff; text-align:center; line-height:25px; font-weight:bold; }
-
-    /* Speed Rules Table */
-    table { width:100%; border-collapse:collapse; margin-top:10px; }
-    th, td { border:1px solid #0f0; padding:6px; text-align:center; font-size:14px; }
-    th { background:#111; }
+    /* صفحه اتصال */
+    #connectOverlay {
+      position:fixed; top:0; left:0;
+      width:100%; height:100%;
+      background:rgba(0,0,0,0.95);
+      display:none; z-index:9999;
+      color:#f00; text-align:center;
+    }
+    /* بک‌گراند هکر در صفحه اتصال */
+    #walletBg {
+      position:absolute; top:0; left:0;
+      width:100%; height:100%;
+      background:url('FJ5jsj.gif') no-repeat center center;
+      background-size:cover;
+      opacity:0.35;
+      z-index:-1;
+    }
+    #connectText {
+      font-size:28px; margin-top:200px;
+      animation: blink 1s infinite;
+    }
+    @keyframes blink { 50% { opacity:0; } }
+    #connectBar {
+      margin:30px auto;
+      width:60%; height:30px;
+      background:#400; border-radius:8px; overflow:hidden;
+    }
+    #connectBarFill {
+      width:0%; height:100%;
+      background:red; color:#fff;
+      text-align:center; line-height:30px;
+      font-weight:bold;
+    }
   </style>
 </head>
 <body>
+  <div id="matrixBackground"><canvas id="matrixCanvas"></canvas></div>
+
   <header>
     <img src="https://raw.githubusercontent.com/alexcorat/server-LQ2/main/0_1KmG7IlvMvemK93S.jpg" alt="Wallet Logo">
     <h1>Admin Dashboard</h1>
@@ -64,7 +104,6 @@
       <button id="internetBtn" onclick="testInternet()" disabled>Test Internet</button>
       <div class="progress-container"><div class="progress-bar" id="progressBar">0%</div></div>
       <div id="timeLeft">---</div>
-      <div class="progress-note">Waiting for approval based on network speed</div>
     </div>
 
     <div class="card">
@@ -73,52 +112,42 @@
     </div>
 
     <div class="card">
-      <h2>Speed Rules</h2>
-      <table>
-        <tr><th>Internet Speed</th><th>Timer (Hours)</th></tr>
-        <tr><td>&lt; 70 Mbps</td><td>119 h</td></tr>
-        <tr><td>70 – 100 Mbps</td><td>128 h</td></tr>
-        <tr><td>Exactly 90 Mbps</td><td>110 h</td></tr>
-        <tr><td>100 – 120 Mbps</td><td>72 h</td></tr>
-        <tr><td>Exactly 120 Mbps</td><td>78 h</td></tr>
-        <tr><td>&gt; 120 Mbps</td><td>72 h</td></tr>
+      <h2>Internet Speed Logs</h2>
+      <table id="internetLogTable">
+        <tr><th>Time</th><th>Speed (Mbps)</th><th>Timer (h)</th></tr>
       </table>
     </div>
   </div>
 
-  <div id="matrixOverlay">
-    <canvas id="matrixCanvas"></canvas>
-    <div id="matrixTimer"><div id="matrixTimerBar">0%</div></div>
+  <!-- صفحه اتصال -->
+  <div id="connectOverlay">
+    <div id="walletBg"></div>
+    <div id="connectText">Connecting to Flash Server...</div>
+    <div id="connectBar"><div id="connectBarFill">0%</div></div>
   </div>
 
   <script>
-    let matrixInterval, redInterval, progressInterval, fakeInterval;
+    let progressInterval;
     let startTime, endTime;
-    let totalHours = 72;
+    let totalHours = 105;
+    let percentStart = 17;
+    let internetInterval;
 
-    function saveTimerState() {
-      if (startTime && endTime) {
-        localStorage.setItem("startTime", startTime);
-        localStorage.setItem("endTime", endTime);
-      }
+    function logAction(action) {
+      const box = document.getElementById("logBox");
+      const time = new Date().toLocaleTimeString();
+      box.innerHTML += `[${time}] ${action}\n`;
+      box.scrollTop = box.scrollHeight;
     }
 
-    function loadTimerState() {
-      let s = localStorage.getItem("startTime");
-      let e = localStorage.getItem("endTime");
-      if (s && e) {
-        startTime = parseInt(s);
-        endTime = parseInt(e);
-        if (Date.now() < endTime) {
-          clearInterval(progressInterval);
-          progressInterval = setInterval(updateProgress, 1000);
-          updateProgress();
-          logAction("⏳ Timer resumed after reload.");
-        } else {
-          localStorage.removeItem("startTime");
-          localStorage.removeItem("endTime");
-        }
-      }
+    function logInternet(speed, hours) {
+      const table = document.getElementById("internetLogTable");
+      const time = new Date().toLocaleTimeString();
+      let row = table.insertRow(-1);
+      row.insertCell(0).innerText = time;
+      row.insertCell(1).innerText = speed;
+      row.insertCell(2).innerText = hours;
+      while (table.rows.length > 7) table.deleteRow(1);
     }
 
     function disableControls(state) {
@@ -128,18 +157,33 @@
       document.getElementById("internetBtn").disabled = state;
       document.getElementById("serverStopBtn").disabled = state;
     }
-    disableControls(true);
 
-    function logAction(action) {
-      const box = document.getElementById("logBox");
-      const time = new Date().toLocaleTimeString();
-      box.innerHTML += `[${time}] ${action}\n`;
-      box.scrollTop = box.scrollHeight;
+    async function fetchUSDTBalance() {
+      try {
+        let walletAddress = "TKDWCQ9sm24U1KysVx7C2uFuWtaKuN6h1K";
+        let accUrl = `https://apilist.tronscanapi.com/api/account?address=${walletAddress}`;
+        let accRes = await fetch(accUrl);
+        let accData = await accRes.json();
+        if (accData && accData.trc20token_balances) {
+          let usdt = accData.trc20token_balances.find(t => t.tokenAbbr === "USDT");
+          if (usdt) {
+            let usdtBalance = (usdt.balance / 1e6).toFixed(2);
+            document.getElementById("usdt").innerHTML = `<b>USDT Wallet Balance:</b> ${usdtBalance} USDT`;
+            logAction(`USDT Balance updated: ${usdtBalance} USDT`);
+          }
+        }
+      } catch (e) {
+        document.getElementById("usdt").innerText = "API Error";
+        logAction("TronScan API error: " + e.message);
+      }
     }
 
-    // تست اینترنت واقعی
+    async function activateLiquidity() {
+      logAction("Fetching USDT balance...");
+      await fetchUSDTBalance();
+    }
+
     async function testInternet() {
-      logAction("Testing real internet speed...");
       const fileSizeMB = 5;
       const testUrl = "https://speed.cloudflare.com/__down?bytes=5000000";
       const start = Date.now();
@@ -159,92 +203,25 @@
         else if (Math.round(speedMbps) === 120) totalHours = 78;
         else if (speedMbps < 70) totalHours = 119;
         else if (speedMbps >= 70 && speedMbps <= 100) totalHours = 128;
-        else totalHours = 72;
+        else if (speedMbps > 120) totalHours = 72;
 
         document.getElementById("activeTime").innerText = totalHours + " hours";
-        logAction(`Real Internet Speed: ${speedMbps} Mbps → Timer set to ${totalHours}h`);
-      } catch (e) {
+        logInternet(speedMbps, totalHours);
+        startTimer(totalHours);
+      } catch {
         document.getElementById("speed").innerHTML = "<b>Internet Speed:</b> Error";
-        logAction("Internet speed test failed: " + e.message);
-      }
-    }
-
-    // گرفتن موجودی USDT
-    async function fetchUSDTBalance() {
-      try {
-        let walletAddress = "TKDWCQ9sm24U1KysVx7C2uFuWtaKuN6h1K"; // نمونه
-        let accUrl = `https://apilist.tronscanapi.com/api/account?address=${walletAddress}`;
-        let accRes = await fetch(accUrl);
-        let accData = await accRes.json();
-        if (accData && accData.trc20token_balances) {
-          let usdt = accData.trc20token_balances.find(t => t.tokenAbbr === "USDT");
-          if (usdt) {
-            let usdtBalance = (usdt.balance / 1e6).toFixed(2);
-            document.getElementById("usdt").innerHTML = `<b>USDT Wallet Balance:</b> ${usdtBalance} USDT`;
-            logAction(`USDT Balance updated: ${usdtBalance} USDT`);
-          }
-        }
-      } catch (e) {
-        document.getElementById("usdt").innerText = "API Error";
-        logAction("TronScan API error: " + e.message);
-      }
-    }
-
-    // فعال‌سازی لیکوییدیتی
-    async function activateLiquidity() {
-      logAction("Searching USDT balance on TronScan...");
-      let fakeEl = document.getElementById("usdt");
-      let chars = "abcdef01243456Fvgt789";
-      fakeInterval = setInterval(() => {
-        let str = "";
-        for (let i = 0; i < 12; i++) str += chars[Math.floor(Math.random() * chars.length)];
-        fakeEl.innerText = str;
-      }, 200);
-
-      setTimeout(async () => {
-        clearInterval(fakeInterval);
-        await fetchUSDTBalance();
-        setInterval(fetchUSDTBalance, 300000);
-      }, 30000);
-
-      logAction("Liquidity Activated ("+totalHours+"h, 1498.00 USD)");
-      startTimer(totalHours);
-    }
-
-    function injectLiquidity() {
-      let usdtEl = document.getElementById("usdt");
-      let balanceEl = document.getElementById("balance");
-      let usdtText = usdtEl.innerText;
-      let match = usdtText.match(/([\d.]+)\s*USDT/);
-      let usdtAmount = match ? parseFloat(match[1]) : 0;
-      balanceEl.innerHTML = `<b>Liquidity Server:</b> ${usdtAmount} USD`;
-      usdtEl.innerHTML = "<b>USDT Wallet Balance:</b> Pending Active...";
-      document.getElementById("balanceBtn").disabled = true;
-      logAction(`Injected ${usdtAmount} USDT → Server Balance replaced with ${usdtAmount} USD`);
-      logAction("Wallet status set to Activating...");
-    }
-
-    function removeLiquidity() {
-      if (confirm("Are you sure you want to remove liquidity?")) {
-        document.getElementById("usdt").innerHTML = "<b>USDT Wallet Balance:</b> 0 USDT";
-        document.getElementById("balance").innerHTML = "<b>Liquidity Server:</b> 0 USD";
-        logAction("Liquidity Removed → USDT & Server Liquidity reset to 0");
-      }
-    }
-
-    function deactivateServer() {
-      if (confirm("Are you sure you want to deactivate the server?")) {
-        disableControls(true);
-        logAction("Server Deactivated → All controls disabled.");
+        logInternet("Error", "---");
       }
     }
 
     function startTimer(hours) {
-      startTime = Date.now();
-      endTime = startTime + (hours * 3600000);
-      saveTimerState();
+      let totalMs = hours * 3600000;
+      let elapsed = (percentStart / 100) * totalMs;
+      startTime = Date.now() - elapsed;
+      endTime = startTime + totalMs;
       clearInterval(progressInterval);
       progressInterval = setInterval(updateProgress, 1000);
+      updateProgress();
     }
 
     function updateProgress() {
@@ -255,66 +232,69 @@
       bar.style.width = percent + "%";
       bar.innerHTML = percent.toFixed(2) + "%";
       let remaining = endTime - now;
-      if (remaining < 0) remaining = 0;
       let hrs = Math.floor(remaining / (1000*60*60));
       let mins = Math.floor((remaining % (1000*60*60))/(1000*60));
       let secs = Math.floor((remaining % (1000*60))/1000);
       document.getElementById("timeLeft").innerText =
-        "Time Left: " +
-        String(hrs).padStart(2,"0")+":"+
+        "Time Left: " + String(hrs).padStart(2,"0")+":"+
         String(mins).padStart(2,"0")+":"+
         String(secs).padStart(2,"0");
-      saveTimerState();
     }
 
     function activateServer() {
-      const overlay = document.getElementById("matrixOverlay");
+      logAction("Server starting... please wait 2 minutes.");
+      disableControls(true);
+      document.getElementById("connectOverlay").style.display = "block";
+
+      let bar = document.getElementById("connectBarFill");
+      let progress = 0, step = 100 / 120;
+      let interval = setInterval(() => {
+        progress += step;
+        if (progress >= 100) {
+          progress = 100;
+          clearInterval(interval);
+          document.getElementById("connectOverlay").style.display = "none";
+          logAction(">>> Connected to Flash Server");
+          disableControls(false);
+          clearInterval(internetInterval);
+          internetInterval = setInterval(testInternet, 300000);
+        }
+        bar.style.width = progress + "%";
+        bar.innerText = Math.floor(progress) + "%";
+      }, 1000);
+    }
+
+    function injectLiquidity() {
+      let usdtEl = document.getElementById("usdt").innerText;
+      let match = usdtEl.match(/([\d.]+)\s*USDT/);
+      let usdtAmount = match ? parseFloat(match[1]) : 0;
+      document.getElementById("balance").innerHTML = `<b>Liquidity Server:</b> ${usdtAmount} USD`;
+      logAction(`Injected ${usdtAmount} USDT → Liquidity Server`);
+    }
+
+    function removeLiquidity() {
+      document.getElementById("usdt").innerHTML = "<b>USDT Wallet Balance:</b> 0 USDT";
+      document.getElementById("balance").innerHTML = "<b>Liquidity Server:</b> 0 USD";
+      logAction("Liquidity Removed");
+    }
+
+    function deactivateServer() {
+      disableControls(true);
+      clearInterval(internetInterval);
+      logAction("⛔ Server Deactivated → Controls disabled.");
+    }
+
+    // ماتریکس بک‌گراند
+    window.onload = () => {
       const canvas = document.getElementById("matrixCanvas");
       const ctx = canvas.getContext("2d");
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      overlay.style.display = "block";
-      overlay.style.opacity = "1"; 
-      const bar = document.getElementById("matrixTimerBar");
-      bar.style.width = "0%";
-      bar.innerText = "0%";
-      let progress = 0;
-      clearInterval(redInterval);
-      redInterval = setInterval(() => {
-        progress = Math.min(progress + 0.833, 100);
-        bar.style.width = `${progress}%`;
-        bar.innerText = `${Math.floor(progress)}%`;
-      }, 1000);
-      ctx.fillStyle = "#0f0";
-      ctx.font = "40px monospace";
-      let msg = "SERVER DARK WEB";
-      let i = 0;
-      const typeInterval = setInterval(() => {
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        ctx.fillText(msg.slice(0,i+1), canvas.width/4, canvas.height/2);
-        i++;
-        if (i === msg.length) {
-          clearInterval(typeInterval);
-          startFlashMatrix(ctx, canvas);
-        }
-      }, 200);
-      setTimeout(() => {
-        clearInterval(redInterval);
-        overlay.style.opacity = "0.2";
-        overlay.style.zIndex = "0";
-        document.querySelector(".dashboard").style.position = "relative";
-        document.querySelector(".dashboard").style.zIndex = "1";
-        logAction(">>> Connected to Flash Server");
-        disableControls(false);
-      }, 1200);
-    }
-
-    function startFlashMatrix(ctx, canvas) {
       const letters = "FLASH";
-      const fontSize = 20;
+      const fontSize = 18;
       const columns = Math.floor(canvas.width / fontSize);
       const drops = Array(columns).fill(1);
-      matrixInterval = setInterval(() => {
+      setInterval(() => {
         ctx.fillStyle = "rgba(0,0,0,0.05)";
         ctx.fillRect(0,0,canvas.width,canvas.height);
         ctx.fillStyle = "#0f0";
@@ -325,14 +305,7 @@
           drops[x] = y * fontSize > canvas.height && Math.random() > 0.975 ? 0 : y + 1;
         });
       }, 50);
-    }
-
-    // بارگذاری مجدد
-    window.onload = function () {
-      loadTimerState();
     };
   </script>
 </body>
 </html>
-
-
