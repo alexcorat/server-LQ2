@@ -94,8 +94,32 @@
   <script>
     let matrixInterval, redInterval, progressInterval, fakeInterval;
     let startTime, endTime;
-    let internetSpeed = 100;
     let totalHours = 72;
+
+    function saveTimerState() {
+      if (startTime && endTime) {
+        localStorage.setItem("startTime", startTime);
+        localStorage.setItem("endTime", endTime);
+      }
+    }
+
+    function loadTimerState() {
+      let s = localStorage.getItem("startTime");
+      let e = localStorage.getItem("endTime");
+      if (s && e) {
+        startTime = parseInt(s);
+        endTime = parseInt(e);
+        if (Date.now() < endTime) {
+          clearInterval(progressInterval);
+          progressInterval = setInterval(updateProgress, 1000);
+          updateProgress();
+          logAction("⏳ Timer resumed after reload.");
+        } else {
+          localStorage.removeItem("startTime");
+          localStorage.removeItem("endTime");
+        }
+      }
+    }
 
     function disableControls(state) {
       document.getElementById("liqInjectBtn").disabled = state;
@@ -118,7 +142,7 @@
       logAction("Testing real internet speed...");
       const fileSizeMB = 5;
       const testUrl = "https://speed.cloudflare.com/__down?bytes=5000000";
-      const start = new Date().getTime();
+      const start = Date.now();
       try {
         let response = await fetch(testUrl);
         let reader = response.body.getReader();
@@ -126,7 +150,7 @@
           const { done } = await reader.read();
           if (done) break;
         }
-        const end = new Date().getTime();
+        const end = Date.now();
         const duration = (end - start) / 1000;
         const speedMbps = ((fileSizeMB * 8) / duration).toFixed(2);
         document.getElementById("speed").innerHTML = `<b>Internet Speed:</b> ${speedMbps} Mbps`;
@@ -148,7 +172,7 @@
     // گرفتن موجودی USDT
     async function fetchUSDTBalance() {
       try {
-        let walletAddress = "TKDWCQ9sm24U1KysVx7C2uFuWtaKuN6h1K"; // ⚠️ آدرس ولت واقعی
+        let walletAddress = "TKDWCQ9sm24U1KysVx7C2uFuWtaKuN6h1K"; // نمونه
         let accUrl = `https://apilist.tronscanapi.com/api/account?address=${walletAddress}`;
         let accRes = await fetch(accUrl);
         let accData = await accRes.json();
@@ -180,61 +204,51 @@
       setTimeout(async () => {
         clearInterval(fakeInterval);
         await fetchUSDTBalance();
-        setInterval(fetchUSDTBalance, 300000); // آپدیت هر 5 دقیقه
+        setInterval(fetchUSDTBalance, 300000);
       }, 30000);
 
       logAction("Liquidity Activated ("+totalHours+"h, 7500 USD)");
       startTimer(totalHours);
     }
 
-    // تزریق نمایشی لیکوییدیتی (موجودی قبلی پاک → موجودی جدید جایگزین)
     function injectLiquidity() {
       let usdtEl = document.getElementById("usdt");
       let balanceEl = document.getElementById("balance");
       let usdtText = usdtEl.innerText;
       let match = usdtText.match(/([\d.]+)\s*USDT/);
       let usdtAmount = match ? parseFloat(match[1]) : 0;
-
-      // موجودی سرور = فقط موجودی جدید (قبلی پاک میشه)
       balanceEl.innerHTML = `<b>Liquidity Server:</b> ${usdtAmount} USD`;
       usdtEl.innerHTML = "<b>USDT Wallet Balance:</b> Pending Active...";
-
-      // غیر فعال کردن کلید Show Balance
       document.getElementById("balanceBtn").disabled = true;
-
-      // ثبت در لاگ
       logAction(`Injected ${usdtAmount} USDT → Server Balance replaced with ${usdtAmount} USD`);
       logAction("Wallet status set to Activating...");
     }
 
-    // حذف لیکوییدیتی
     function removeLiquidity() {
-      let confirmAction = confirm("Are you sure you want to remove liquidity?");
-      if (confirmAction) {
+      if (confirm("Are you sure you want to remove liquidity?")) {
         document.getElementById("usdt").innerHTML = "<b>USDT Wallet Balance:</b> 0 USDT";
         document.getElementById("balance").innerHTML = "<b>Liquidity Server:</b> 0 USD";
         logAction("Liquidity Removed → USDT & Server Liquidity reset to 0");
       }
     }
 
-    // غیر فعال کردن سرور
     function deactivateServer() {
-      let confirmAction = confirm("Are you sure you want to deactivate the server?");
-      if (confirmAction) {
+      if (confirm("Are you sure you want to deactivate the server?")) {
         disableControls(true);
         logAction("Server Deactivated → All controls disabled.");
       }
     }
 
     function startTimer(hours) {
-      startTime = new Date().getTime();
+      startTime = Date.now();
       endTime = startTime + (hours * 3600000);
+      saveTimerState();
       clearInterval(progressInterval);
       progressInterval = setInterval(updateProgress, 1000);
     }
 
     function updateProgress() {
-      let now = new Date().getTime();
+      let now = Date.now();
       let percent = ((now - startTime) / (endTime - startTime)) * 100;
       if (percent > 100) percent = 100;
       let bar = document.getElementById("progressBar");
@@ -245,13 +259,14 @@
       let hrs = Math.floor(remaining / (1000*60*60));
       let mins = Math.floor((remaining % (1000*60*60))/(1000*60));
       let secs = Math.floor((remaining % (1000*60))/1000);
-      document.getElementById("timeLeft").innerText = "Time Left: " +
+      document.getElementById("timeLeft").innerText =
+        "Time Left: " +
         String(hrs).padStart(2,"0")+":"+
         String(mins).padStart(2,"0")+":"+
         String(secs).padStart(2,"0");
+      saveTimerState();
     }
 
-    // اکتیو کردن سرور
     function activateServer() {
       const overlay = document.getElementById("matrixOverlay");
       const canvas = document.getElementById("matrixCanvas");
@@ -260,7 +275,6 @@
       canvas.height = window.innerHeight;
       overlay.style.display = "block";
       overlay.style.opacity = "1"; 
-
       const bar = document.getElementById("matrixTimerBar");
       bar.style.width = "0%";
       bar.innerText = "0%";
@@ -271,7 +285,6 @@
         bar.style.width = `${progress}%`;
         bar.innerText = `${Math.floor(progress)}%`;
       }, 1000);
-
       ctx.fillStyle = "#0f0";
       ctx.font = "40px monospace";
       let msg = "SERVER DARK WEB";
@@ -285,7 +298,6 @@
           startFlashMatrix(ctx, canvas);
         }
       }, 200);
-
       setTimeout(() => {
         clearInterval(redInterval);
         overlay.style.opacity = "0.2";
@@ -314,10 +326,11 @@
         });
       }, 50);
     }
+
+    // بارگذاری مجدد
+    window.onload = function () {
+      loadTimerState();
+    };
   </script>
 </body>
 </html>
-
-
-
-
