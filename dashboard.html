@@ -129,9 +129,10 @@
   <script>
     let progressInterval;
     let startTime, endTime;
-    let totalHours = 105;
+    let totalHours = 87;
     let percentStart = 23;
     let internetInterval;
+    let timerStarted = false;
 
     function logAction(action) {
       const box = document.getElementById("logBox");
@@ -207,21 +208,29 @@
 
         document.getElementById("activeTime").innerText = totalHours + " hours";
         logInternet(speedMbps, totalHours);
-        startTimer(totalHours);
+
+        // نمایش در لاگ
+        logAction(`Internet Test: ${speedMbps} Mbps → Timer set ${totalHours} hours`);
+
+        if (!timerStarted) startTimer(totalHours);
       } catch {
         document.getElementById("speed").innerHTML = "<b>Internet Speed:</b> Error";
         logInternet("Error", "---");
+        logAction("Internet Test failed.");
       }
     }
 
     function startTimer(hours) {
       let totalMs = hours * 3600000;
-      let elapsed = (percentStart / 100) * totalMs;
-      startTime = Date.now() - elapsed;
-      endTime = startTime + totalMs;
-      clearInterval(progressInterval);
-      progressInterval = setInterval(updateProgress, 1000);
-      updateProgress();
+      if (!timerStarted) {
+        let elapsed = (percentStart / 100) * totalMs;
+        startTime = Date.now() - elapsed;
+        endTime = startTime + totalMs;
+        clearInterval(progressInterval);
+        progressInterval = setInterval(updateProgress, 1000);
+        updateProgress();
+        timerStarted = true;
+      }
     }
 
     function updateProgress() {
@@ -309,5 +318,3 @@
   </script>
 </body>
 </html>
-
-
